@@ -27,20 +27,25 @@ sub onlyone_via {
 
     if ($m->getMethod() eq "REGISTER") {
         
-        %tokill->{$user} = $currentid
-            if length(%userslogged->{$user}) 
-            && %userslogged->{$user} != $currentid;
-        
+        if (%tokill->{$user} eq $currentid) {
+            my $au = %tokill->{$user};
+            OpenSIPS::log(L_INFO, "488 - sorry, i need to kill $au");
+            delete %tokill->{$user};
+            OpenSIPS::AVP::add("user_to_kill", "1");
+            return 1;
+        }
+
+        my $activeid = %userslogged->{$user};
+
+        if ($activeid && $activeid ne $currentid) {
+            %tokill->{$user} = $activeid;
+            OpenSIPS::log(L_INFO, "488 - Request to kill $activeid");
+        }
         %userslogged->{$user} = $currentid;
+    
     }
 
-    foreach my $nuser (keys %tokill) {
-        next if $nuser ne $user;
-        next if %userslogged->{$users} ne $currentid;
-        OpenSIPS::log(L_INFO, "Sorry, I need to kill $user");
-        $m->sl_send_reply("488", "Sorry, I need to kill you");
-    }
-
+    return 1;
 }
 
 
